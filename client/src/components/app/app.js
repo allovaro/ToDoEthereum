@@ -8,7 +8,10 @@ import './app.css';
 function App() {
     const [chainId, setCurrentChainID] = useState();
     const [account, setCurrentAccount] = useState();
+    const [balance, setCurrentBalance] = useState(0);
     const [isLogged, setIsLogged] = useState(false);
+
+    let web3 = null;
 
     useEffect(() => {
         window.ethereum.on('chainChanged', _chainId => {
@@ -26,6 +29,7 @@ function App() {
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
             setIsLogged(true);
             setCurrentAccount(accounts[0]);
+            setCurrentBalance(await web3.eth.getBalance(accounts[0]));
             return accounts[0];
         } catch (err) {
             if (err.code === 4001) {
@@ -42,7 +46,7 @@ function App() {
 
     const SignIn = async () => {
         const provider = await detectEthereumProvider();
-        const web3 = new Web3(provider);
+        web3 = new Web3(provider);
 
         if (!provider) {
             console.log('Wallet not found please install Metamask');
@@ -64,7 +68,7 @@ function App() {
             <Button onClick={SignIn}>Connect</Button>
             <h1>chainId is {chainId}</h1>
             <h2>Account is {account}</h2>
-            <EthAddress balance="00.00" address={account} />
+            <EthAddress balance={balance} address={account} />
         </div>
     );
 }

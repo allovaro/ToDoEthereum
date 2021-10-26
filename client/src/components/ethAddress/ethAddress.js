@@ -52,10 +52,15 @@ function EthAddress(props) {
     if (!props.address) {
         return <div />;
     }
+    let { balance } = props;
+    if (balance.length > 1) {
+        const balanceArr = balance.split('.');
+        balance = `${balanceArr[0]}.${balanceArr[1].slice(0, 2)}`;
+    }
 
     return (
         <Container>
-            <Balance>{props.balance} ETH</Balance>
+            <Balance>{balance} ETH</Balance>
             <Address>
                 <Paragraph>
                     {props.address && `${props.address.slice(0, 6)}...${props.address.slice(

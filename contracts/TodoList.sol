@@ -14,7 +14,7 @@ contract TodoList {
         owner = _owner;
     }
 
-    event TaskCreated(uint _date, string _content, bool _done);
+    event ListUpdated(string status);
 
     modifier onlyOwner {
         require(msg.sender  == owner, "Only owner can call this function");
@@ -28,20 +28,22 @@ contract TodoList {
 
     function createTask(string memory _task) public onlyOwner {
         tasks.push(Task(block.timestamp, _task, false));
-        emit TaskCreated(block.timestamp, _task, false);
+        emit ListUpdated("created");
     }
     
     function deleteTask(uint _id) public onlyOwner {
         tasks[_id] = tasks[tasks.length - 1];
         tasks.pop();
+        emit ListUpdated("deleted");
     }
 
     function doneUndoneTask(uint _id) public onlyOwner taskExist(_id) {
         tasks[_id].done = !tasks[_id].done;
+        emit ListUpdated("done");
     }
 
-    function getLastTaskId() public view returns(uint) {
-        return tasks.length - 1;
+    function getLastTaskId() public view returns(int) {
+        return int(tasks.length) - 1;
     }
 
     function getTask(uint _id) public view onlyOwner taskExist(_id)

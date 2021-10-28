@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import Web3 from 'web3';
 import detectEthereumProvider from '@metamask/detect-provider';
-import { Button, Grid, Input } from 'semantic-ui-react';
+import { Button, Grid } from 'semantic-ui-react';
 import TodoFactory from '../../contracts/TodoFactory.json';
 import TodoList from '../../contracts/TodoList.json';
 import Head from '../head/head';
-import TaskList from '../taskList/taskList';
+import TaskComponent from '../taskComponent/taskComponent';
 import MessageList from '../MessageList/MessageList';
+import NewTaskList from '../newTaskList/newTaskList';
 import './app.css';
 import logo from './brickwall.jpg';
 
@@ -20,17 +21,6 @@ function App() {
     const [web3, setWeb3] = useState();
     const [contractFactory, setFactory] = useState();
     const [contractTodo, setTodo] = useState();
-
-    const listExample = [{
-        time: 1635270595813,
-        content: 'Buy a milk',
-        done: false,
-    },
-    {
-        time: 1635330595813,
-        content: 'Repair a car',
-        done: true,
-    }];
 
     const addMessage = (header, content) => {
         setMessages(prev => [...prev,
@@ -84,8 +74,12 @@ function App() {
     const CreateNewGoalList = async () => {
         await contractFactory.methods.createTodo().send({ from: account });
         const instanceAddress = await contractFactory.methods.getTodoByOwner().call();
-        console.log('address', instanceAddress);
         const instance = new web3.eth.Contract(TodoList.abi, instanceAddress);
+        setTodo(instance);
+    };
+
+    const CreateGoalList = async () => {
+        const instance = new web3.eth.Contract(TodoList.abi, todoAddress);
         setTodo(instance);
     };
 
@@ -98,9 +92,15 @@ function App() {
             setCurrentAccount(accounts[0]);
             const accBalance = await web3Instance.eth.getBalance(accounts[0]);
             setCurrentBalance(web3Instance.utils.fromWei(accBalance, 'ether'));
-            const deployedNetwork = TodoFactory.networks['1337'];
+            const deployedNetwork = TodoFactory.networks[parseInt(id, 16)];
             const contract = new web3Instance.eth.Contract(TodoFactory.abi,
                 deployedNetwork && deployedNetwork.address);
+            const ret = await contract.methods.getTodoByOwner().call();
+            if (ret !== '0x0000000000000000000000000000000000000000') {
+                setTodoAddress(ret);
+                const instanceTodo = new web3Instance.eth.Contract(TodoList.abi, ret);
+                setTodo(instanceTodo);
+            }
             setFactory(contract);
             addMessage('Metamask', 'Metamask connected');
             // GetTodoFactoryContract(id);
@@ -142,6 +142,8 @@ function App() {
         setCurrentBalance('0');
         setCurrentAccount('');
         setCurrentChainID('');
+        setFactory();
+        setTodo();
         addMessage('ToDo DApp', 'You was logged out');
     };
 
@@ -172,14 +174,14 @@ function App() {
                 balance={balance}
                 account={account}
             />
-
             <Grid centered columns={3}>
                 <Grid.Column width={2}>
 
                 </Grid.Column>
                 <Grid.Column width={12}>
+                    <NewTaskList setOpen={CreateNewGoalList} />
                     <Button onClick={CreateNewGoalList}>New Task List</Button>
-                    <TaskList
+                    <TaskComponent
                         account={account}
                         contract={contractTodo}
                     />

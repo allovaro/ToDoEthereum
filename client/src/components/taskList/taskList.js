@@ -1,29 +1,17 @@
-import React, { useState } from 'react';
-import {
-    Segment, Header, Grid, Button, Checkbox, Input,
-} from 'semantic-ui-react';
+import React, { useState, useEffect } from 'react';
+import { Grid, Button, Checkbox } from 'semantic-ui-react';
+import sha1 from 'sha1';
 
 function TaskList(props) {
-    const [inputField, setInputField] = useState('');
     const [list, setList] = useState([]);
-    const [lastId, setLastId] = useState(0);
+
     const { account, contract } = props;
-
-    const inputChanged = (event, { value }) => {
-        setInputField(value);
-    };
-
-    const CreateTask = async () => {
-        await contract.methods.createTask(inputField).send({ from: account });
-    };
-
-    const GetTask = async id => {
-        const ret = await contract.methods.getTask(id).call();
-        return ret;
-    };
 
     const GetLastId = async () => {
         const ret = await contract.methods.getLastTaskId().call();
+        if (ret === -1) {
+            return [];
+        }
         const ids = [];
         for (let i = 0; i <= ret; i += 1) {
             ids.push(i);
@@ -31,11 +19,27 @@ function TaskList(props) {
         return ids;
     };
 
+    const GetTask = async id => {
+        const ret = await contract.methods.getTask(id).call();
+        return ret;
+    };
+
     const GetTasks = async () => {
-        const ids = GetLastId();
-        const items = ids.map(async id => (await GetTask(id)));
+        const idArr = await GetLastId();
+        if (idArr.length === 0) {
+            return;
+        }
+        const promises = idArr.map(async id => (await GetTask(id)));
+        const items = await Promise.all(promises);
         setList(items);
     };
+
+    useEffect(() => {
+        contract.events.ListUpdated({}, () => {
+            GetTasks();
+        });
+        GetTasks();
+    }, []);
 
     const DeleteTask = async id => {
         await contract.methods.deleteTask(id).send({ from: account });
@@ -46,40 +50,32 @@ function TaskList(props) {
     };
 
     return (
-        <Segment secondary raised>
-            <Grid divided>
-                <Grid.Row verticalAlign="middle">
-                    <Header as="h2" color="purple" floated="left">
-                        Tasks
-                    </Header>
-                    <Button primary onClick={CreateTask}>New task</Button>
-                    <Button primary onClick={GetTasks}>Get</Button>
-                    <Input onChange={inputChanged} />
-                </Grid.Row>
-
-                {list
-                    ? list.map(item => {
-                        const date = new Date(item.time);
-                        const dateItem = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}
+        <>
+            {list
+                ? list.map((item, id) => {
+                    const date = new Date(item[0] * 1000);
+                    const dateItem = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}
                         ${date.getHours()}
                         :${date.getMinutes()}
                         :${date.getSeconds()}`;
-                        return (
-                            <Grid.Row columns={3} verticalAlign="middle">
-                                <Grid.Column width={1} textAlign="center">
-                                    <Checkbox checked={item.done} onChange={props.onToggle} />
-                                </Grid.Column>
-                                <Grid.Column width={2} verticalAlign="middle">
-                                    <p>{dateItem}</p>
-                                </Grid.Column>
-                                <Grid.Column width={13}>
-                                    <p>{item.content}</p>
-                                </Grid.Column>
-                            </Grid.Row>
-                        );
-                    }) : <Grid.Row columns={3} verticalAlign="middle" />}
-            </Grid>
-        </Segment>
+                    return (
+                        <Grid.Row key={sha1(`${item[0]}${item[1]}`)} columns={3} verticalAlign="middle">
+                            <Grid.Column width={1} textAlign="center">
+                                <Checkbox checked={item[2]} onChange={() => DoneTask(id)} />
+                            </Grid.Column>
+                            <Grid.Column width={2} textAlign="center" verticalAlign="middle">
+                                <p>{dateItem}</p>
+                            </Grid.Column>
+                            <Grid.Column width={11}>
+                                <p>{item[1]}</p>
+                            </Grid.Column>
+                            <Grid.Column width={2} textAlign="center">
+                                <Button color="red" icon="trash" onClick={() => DeleteTask(id)} />
+                            </Grid.Column>
+                        </Grid.Row>
+                    );
+                }) : <Grid.Row columns={3} verticalAlign="middle" />}
+        </>
     );
 }
 

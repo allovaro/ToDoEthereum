@@ -3,7 +3,7 @@ import { Message } from 'semantic-ui-react';
 
 function formMessage(header, content, remove, index) {
     return (
-        <Message info onDismiss={() => remove(index)}>
+        <Message info onDismiss={() => remove(index)} key={index}>
             <Message.Header>{header}</Message.Header>
             <p>{content}</p>
         </Message>
